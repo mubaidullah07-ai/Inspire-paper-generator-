@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Paper Generator</title>
+  <style>
+    @media print {
+    body * { visibility: hidden; }
+    #headerSection, #headerSection * { visibility: visible; }
+    #output, #output * { visibility: visible; }
+    #headerSection { position: absolute; left: 0; top: 0; width: 100%; }
+    #output { position: absolute; left: 0; top: 120px; width: 100%; }
+    #controlPanel, #addQuestionPanel, #bankControls, #addFinishDiv { display: none!important; }
+    hr { display: none!important; }
+    }
+   .del-btn {background: red; color: white; border: none; padding: 2px 6px; border-radius: 4px; font-size: 10px; cursor: pointer; margin-left: 5px;}
+    body{font-family:Arial,sans-serif;margin:10px}
+    button{cursor:pointer}
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+ 
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  startup: {typeset: false}
+};
+</script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+</head>
+<body>
+
+<div id="headerSection">
+<h1 style="position:relative; color:darkblue; background:linear-gradient(to right, #dbeafe, #bfdbfe); padding:8px 10px 10px 10px; border-radius:15px; border:3px solid navy; margin:0; width:100%; box-sizing:border-box;">
+    
+    <span style="position:absolute; top:5px; right:12px; font-size:10px; color:navy; font-weight:600;">
+        Contact: 03036302921
+    </span>
+
+    <div style="text-align:center; font-size:18px; font-weight:bold; margin-top:12px;">
+        THE INSPIRE SCHOOL & ACADEMY SHAHKOT
+    </div>
+
+</h1>
+<div style="border: 2px solid black; padding: 10px; margin: 5px 0 10px 0; font-size: 14px;">
+  <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+    <span><strong>Student Name:</strong> ________________________</span>
+    <span><strong>Date:</strong> <span id="currentDate"></span></span>
+  </div>
+  <div style="display:flex; justify-content:space-between; gap:9px; flex-wrap:wrap; font-size:15px;">
+  <span><strong>Class:</strong> <span id="headerClass" style="text-decoration:underline; padding:0 5px;">____________________</span></span>
+  <span><strong>Subject:</strong> <span id="headerSubject" style="text-decoration:underline; padding:0 5px;">____________________</span></span>
+  <span><strong>Total Marks:</strong> <span id="headerTotal">____________________</span></span>
+  </div>
+</div>
+</div>
+
+<div id="controlPanel" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+  <select id="classSelect" onchange="setClass()" style="padding:8px; border-radius:6px; background:red; color:white; border:none; font-size:12px;">
+    <option value="">-- Select Class --</option>
+    <option value="9th">9th Class</option>
+    <option value="10th">10th Class</option>
+    <option value="1stYear">1st Year</option>
+    <option value="2ndYear">2nd Year</option>
+  </select>
+
+  <select id="subjectSelect" onchange="setSubject()" style="padding:8px; border-radius:6px; background:purple; color:white; border:none; font-size:12px;">
+    <option value="">-- Select Subject --</option>
+  </select>
+
+    <div id="chapterSection" style="display:none; margin-top:15px;">
+    <h3>Select Chapters:</h3>
+    <div id="chapterList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    
+    <!-- YE 2 NAYE BUTTON ADD KARO -->
+    <div style="margin-top:15px; display:flex; gap:10px;">
+    <button onclick="addChapter()" style="background:#4CAF50; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">➕ Add Chapter</button>
+    <button onclick="deleteSelectedChapters()" style="background:#f44336; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer;">🗑️ Delete Selected</button>
+    </div>
+    </div>
+  </div>
+
+  <div id="buttonRow" style="display:flex; gap:10px; margin-top:10px;">
+  <button type="button" onclick="toggleMenu()" style="padding:8px 12px; border:none; border-radius:6px; background:#2563eb; color:white; font-size:12px;">Select Question Type</button>
+  <button type="button" onclick="toggleAddPanel()" style="padding:8px 12px; border:none; border-radius:6px; background:orange; color:white; font-size:12px;">➕ Add Question</button>
+  <button type="button" onclick="showBank()" style="padding:8px 12px; border:none; border-radius:6px; background:gray; color:white; font-size:12px;">🗑️ Manage Bank</button>
+  </div>
+  </div>
+</div>
+
+<div id="addQuestionPanel" style="display:none; border:2px dashed blue; padding:15px; margin-top:20px; border-radius:10px; background:#f0f8ff;">
+  <h3 style="color:darkblue; margin-top:0;">➕ Mobile se Question Add karo</h3>
+  <label><b>Chapter Select:</b></label><br>
+  <select id="addChapterSelect" style="width:100%; padding:8px; margin:5px 0 15px 0;">
+    <option value="">-- Pehle Class+Subject select karo --</option>
+  </select><br>
+  <label><b>Question Type:</b></label><br>
+  <select id="addTypeSelect" style="width:100%; padding:8px; margin:5px 0 15px 0;">
+    <option value="mcq">MCQ</option>
+    <option value="short">Short Question</option>
+    <option value="long">Long Question</option>
+  </select><br>
+  <label><b>Question:</b></label><br>
+<div id="addQuestionText" contenteditable="true" style="width:100%; min-height:80px; padding:8px; border:1px solid #ccc; border-radius:8px;"></div><br>
+  <div id="mcqOptions">
+    <label>A)</label> <input type="text" id="optA" style="width:95%; padding:5px; margin:5px 0;"><br>
+    <label>B)</label> <input type="text" id="optB" style="width:95%; padding:5px; margin:5px 0;"><br>
+    <label>C)</label> <input type="text" id="optC" style="width:95%; padding:5px; margin:5px 0;"><br>
+    <label>D)</label> <input type="text" id="optD" style="width:95%; padding:5px; margin:5px 0;"><br>
+  </div>
+  <button type="button" onclick="addQuestionToBank()" style="width:100%; padding:12px; background:darkblue; color:white; border:none; border-radius:8px; font-size:16px; margin-top:10px;">💾 Question Save karo</button>
+  <p id="addMsg" style="color:green; font-weight:bold; text-align:center; margin-top:10px;"></p>
+</div>
+
+<div id="bankControls" style="display:none; border:2px dashed red; padding:15px; margin-top:20px; border-radius:10px; background:#fff0f0;">
+  <h3 style="color:darkred; margin-top:0;">🗑️ Question Bank Manage karo</h3>
+  <div id="bankList" style="max-height:300px; overflow-y:auto;"></div>
+  <button onclick="hideBank()" style="margin-top:10px; padding:8px; background:gray; color:white; border:none; border-radius:6px;">Band karo</button>
+</div>
+
+<p id="msg"></p>
+<hr>
+<div id="menu" style="display:none;">
+  <button onclick="openType('mcq')">MCQs</button>
+  <button onclick="openType('short')">Short</button>
+  <button onclick="openType('long')">Long</button>
+</div>
+
+<div id="addFinishDiv" style="display:flex; justify-content:space-between; margin-top:10px;">
+  <button onclick="addSelected()" style="padding:8px 12px; background:green; color:white; border:none; border-radius:6px;">Add Selected</button>
+  
+  
+  <div style="display:flex; gap:10px;">
+    <button onclick="finishPaper()" style="background:green; color:white; padding:10px; border:none; border-radius:8px;">Finish Paper</button>
+    <button onclick="newPaper()" id="newPaperBtn" style="display:none; background:#2563eb; color:white; padding:10px; border:none; border-radius:8px;">🔄 New Paper</button>
+  </div>
+</div>
+
+<hr>
+<div id="settings" style="display:none;">
+  <h3 id="typeTitle"></h3>
+  Number of Questions: <input type="number" id="qCount"><br><br>
+  Marks per Question: <input type="number" id="qMarks"><br><br>
+
+  <div id="choiceInputs" style="display:none;">
+    Attempt Any: <input type="number" id="qAttempt" style="width:60px;"><br><br>
+  </div>
+
+  <div id="partsInputs" style="display:none;">
+    <label><input type="checkbox" id="hasParts" onchange="toggleParts()"> Has Parts a,b?</label><br><br>
+    <div id="partsDetail" style="display:none; border:1px dashed #ccc; padding:10px;">
+      Part A Marks: <input type="number" id="partAMarks" value="5" style="width:50px;">
+      Part B Marks: <input type="number" id="partBMarks" value="5" style="width:50px;">
+    </div>
+    <br>
+  </div>
+
+  <button onclick="loadBank()">Load Questions</button>
+</div>
+
+<hr>
+<div id="bank"></div>
+<hr>
+<div id="output"></div>
+
+<script>
+// ===== DATE WINDOW LOAD PE =====
+window.onload = function(){
+  document.getElementById("currentDate").innerText = new Date().toLocaleDateString('en-GB');
+  document.getElementById("mcqOptions").style.display = "block";
+}
+
+// ===== FIREBASE SAFE INIT =====
+let db = null;
+let questionBank = {}; // khali rakho
+
+const ALL_SUBJECTS = ["Mathematics", "Biology", "Physics", "Chemistry", "Computer", "English", "Urdu", "Islamiat"];
+
+try {
+  if(typeof firebase!== 'undefined'){
+    const firebaseConfig = {
+      apiKey: "AIzaSyBm9gZoyi8mjVgkydAWNtwxNaxbOTZBXSo",
+      authDomain: "paper-app-18205.firebaseapp.com",
+      databaseURL: "https://paper-app-18205-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "paper-app-18205"
+    };
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+
+ db.ref("questionBank").on("value", (snapshot) => {
+ if(snapshot.exists()){
+ questionBank = snapshot.val() || {};
+ } else {
+ questionBank = {
+ "9th": {},
+ "10th": {},
+ "1stYear": {},
+ "2ndYear": {}
+ };
+ // saveBank() sirf pehli bar chalega jab Firebase bilkul khali ho
+ saveBank();
+ }
+ });
+  }
+} catch(e){
+  console.log("Firebase offline");
+}
+
+function saveBank(){
+  if(db) db.ref("questionBank").set(questionBank);
+}
+
+let selectedClass = "";
+let selectedSubject = "";
+let selectedType = "";
+let selectedChapters = [];
+let paper = { mcq: [], short: [], long: [] };
+
+function toggleParts(){
+  document.getElementById("partsDetail").style.display =
+    document.getElementById("hasParts").checked? "block" : "none";
+}
+
+function getSubjectData(){
+  return questionBank[selectedClass]?.[selectedSubject] || {};
+}
+// 1. Chapter Add karne ka function
+// 1. Chapter Add karne ka function - UPDATED
+function addChapter(){
+  let chapName = prompt("Chapter ka naam likho:\nExample: Chapter 1: Physical Quantities");
+  if(!chapName || chapName.trim() === "") return;
+
+  // Safety check
+  if(!questionBank[selectedClass]) questionBank[selectedClass] = {};
+  if(!questionBank[selectedClass][selectedSubject]) questionBank[selectedClass][selectedSubject] = {};
+
+  if(questionBank[selectedClass][selectedSubject][chapName]){
+    alert("Ye chapter pehle se mojood hai!");
+    return;
+  }
+
+  // Firebase ko khali na lage is liye _meta flag add kar diya
+  questionBank[selectedClass][selectedSubject][chapName] = {
+    mcq: {},
+    short: {},
+    long: {},
+    _meta: "exists" // <- ye line nayi hai. Chapter hamesha rahe ga
+  };
+
+  saveBank();
+  setSubject(); // list refresh kar do
+  alert("✅ " + chapName + " add ho gaya!");
+}
+
+// 2. Chapter Rename karne ka function
+function renameChapter(oldName){
+  let newName = prompt("Naya naam likho:", oldName);
+  if(!newName || newName.trim() === "" || newName === oldName) return;
+
+  if(questionBank[selectedClass][selectedSubject][newName]){
+    alert("Ye naam pehle se mojood hai!");
+    return;
+  }
+
+  // data copy karo naye naam pe
+  questionBank[selectedClass][selectedSubject][newName] = questionBank[selectedClass][selectedSubject][oldName];
+  // purana delete karo
+  delete questionBank[selectedClass][selectedSubject][oldName];
+
+  saveBank();
+  setSubject();
+  alert("✅ Rename ho gaya!");
+}
+
+// 3. Selected chapters delete karne ka function
+function deleteSelectedChapters(){
+  if(selectedChapters.length === 0){
+    alert("Pehle chapter select karo checkbox se!");
+    return;
+  }
+
+  if(!confirm(selectedChapters.length + " chapter(s) delete karne hain? Sare questions bhi delete ho jayen gay!")){
+    return;
+  }
+
+  selectedChapters.forEach(chap => {
+    delete questionBank[selectedClass][selectedSubject][chap];
+  });
+
+  saveBank();
+  selectedChapters = [];
+  setSubject();
+  alert("✅ Delete ho gaye!");
+}
+
+function setClass(){
+  selectedClass = document.getElementById("classSelect").value;
+  selectedSubject = "";
+  selectedChapters = [];
+  document.getElementById("subjectSelect").value = "";
+  document.getElementById("chapterSection").style.display = "none";
+  
+  // Header me class update karo
+  document.getElementById("headerClass").innerText = selectedClass? selectedClass : "____________________";
+  document.getElementById("headerSubject").innerText = "____________________";
+  
+  let subjectSelect = document.getElementById("subjectSelect");
+  subjectSelect.innerHTML = `<option value="">-- Select Subject --</option>`;
+  
+  if(selectedClass){
+    ALL_SUBJECTS.forEach(sub => {
+      subjectSelect.innerHTML += `<option value="${sub}">${sub}</option>`;
+    });
+  }
+  
+  loadChaptersForAdd();
+}
+
+function setSubject(){
+  selectedSubject = document.getElementById("subjectSelect").value;
+  selectedChapters = [];
+
+  // Header me subject update karo
+  document.getElementById("headerSubject").innerText = selectedSubject? selectedSubject : "____________________";
+
+  if(selectedSubject === ""){
+    document.getElementById("chapterSection").style.display = "none";
+    loadChaptersForAdd();
+    return;
+  }
+  let subjectData = getSubjectData();
+  let chapterList = document.getElementById("chapterList");
+  chapterList.innerHTML = "";
+  
+  let chapters = Object.keys(subjectData).sort();
+  
+  chapters.forEach(chap => {
+    chapterList.innerHTML += `
+    <label style="display:flex; align-items:center; gap:5px; padding:5px 10px; border:1px solid #ddd; border-radius:5px; background:white; cursor:pointer; font-size:12px;">
+    <input type="checkbox" value="${chap}" onchange="toggleChapter(this)">
+    ${chap}
+    <button onclick="event.preventDefault(); renameChapter('${chap}')" style="margin-left:5px; background:#2196F3; color:white; border:none; border-radius:3px; padding:2px 6px; font-size:10px; cursor:pointer;">✏️</button>
+    </label>
+    `;
+  });
+  document.getElementById("chapterSection").style.display = "block";
+  loadChaptersForAdd();
+}
+
+function selectAllChapters(){
+  document.querySelectorAll("#chapterList input[type=checkbox]").forEach(cb => {
+    cb.checked = true;
+    toggleChapter(cb);
+  });
+}
+
+function toggleChapter(checkbox){
+  if(checkbox.checked){
+    if(!selectedChapters.includes(checkbox.value)) selectedChapters.push(checkbox.value);
+  } else {
+    selectedChapters = selectedChapters.filter(c => c!== checkbox.value);
+  }
+}
+
+function toggleAddPanel(){
+  let panel = document.getElementById("addQuestionPanel");
+  panel.style.display = panel.style.display === "none"? "block" : "none";
+  loadChaptersForAdd();
+}
+
+function loadChaptersForAdd(){
+  let chapterSelect = document.getElementById("addChapterSelect");
+  if(selectedClass === "" || selectedSubject === ""){
+    chapterSelect.innerHTML = '<option value="">-- Pehle Class+Subject select karo --</option>';
+    return;
+  }
+  let subjectData = getSubjectData();
+  let chapters = Object.keys(subjectData);
+  if(chapters.length === 0){
+    chapterSelect.innerHTML = '<option value="">-- Is subject me koi chapter nahi --</option>';
+    return;
+  }
+  chapterSelect.innerHTML = '<option value="">-- Chapter select karo --</option>';
+  chapters.forEach(chap => {
+    chapterSelect.innerHTML += `<option value="${chap}">${chap}</option>`;
+  });
+}
+
+document.getElementById("addTypeSelect").addEventListener("change", function(){
+  document.getElementById("mcqOptions").style.display = this.value === "mcq"? "block" : "none";
+});
+
+function addQuestionToBank(){
+  let chap = document.getElementById("addChapterSelect").value;
+  let type = document.getElementById("addTypeSelect").value;
+  let qText = document.getElementById("addQuestionText").innerHTML.trim(); // NAYA: innerHTML
+
+  if(chap === "" || chap.includes("select karo")){
+    alert("Pehle chapter select karo");
+    return;
+  }
+  if(!qText){
+    alert("Question likho");
+    return;
+  }
+
+  // Structure auto-create
+  if(!questionBank[selectedClass]) questionBank[selectedClass] = {};
+  if(!questionBank[selectedClass][selectedSubject]) questionBank[selectedClass][selectedSubject] = {};
+  if(!questionBank[selectedClass][selectedSubject][chap]) questionBank[selectedClass][selectedSubject][chap] = {mcq: {}, short: {}, long: {}};
+
+  let questionObj;
+  if(type === "mcq"){
+    let a = document.getElementById("optA").value.trim();
+    let b = document.getElementById("optB").value.trim();
+    let c = document.getElementById("optC").value.trim();
+    let d = document.getElementById("optD").value.trim();
+    if(!a ||!b ||!c ||!d){ alert("4 options bharo"); return; }
+    questionObj = {question: qText, options: [a,b,c,d]}; // NAYA: HTML save hoga
+  } else {
+    questionObj = qText; // NAYA: HTML save hoga
+  }
+
+  // Firebase me push
+  const dbRef = db.ref(`questionBank/${selectedClass}/${selectedSubject}/${chap}/${type}`);
+  dbRef.push(questionObj);
+
+  document.getElementById("addMsg").innerText = "✔ Question Save ho gaya!";
+  document.getElementById("addQuestionText").innerHTML = ""; // NAYA: innerHTML
+  document.getElementById("optA").value = "";
+  document.getElementById("optB").value = "";
+  document.getElementById("optC").value = "";
+  document.getElementById("optD").value = "";
+  setTimeout(()=>{document.getElementById("addMsg").innerText = ""}, 2000);
+}
+
+function showBank(){
+  document.getElementById("bankControls").style.display = "block";
+  loadBankList();
+}
+
+function hideBank(){
+  document.getElementById("bankControls").style.display = "none";
+}
+
+function loadBankList(){
+  let html = "<b>Delete karne ke liye Red button dabao:</b><br><br>";
+  for(let cls in questionBank){
+    for(let sub in questionBank[cls]){
+      for(let chap in questionBank[cls][sub]){
+        // _meta ko skip karo
+        if(chap === "_meta") continue;
+        html += `<b style="font-size:14px; color:navy;">${cls} > ${sub} > ${chap}</b><br>`;
+        ["mcq","short","long"].forEach(type => {
+          let questionsObj = questionBank[cls][sub][chap][type];
+          if(questionsObj){
+            let questionsArr = Object.values(questionsObj);
+            if(questionsArr.length > 0){
+              questionsArr.forEach((q, idx) => {
+                let qText = type === "mcq"? q.question : q;
+                let options = "";
+                if(type === "mcq"){
+                  options = `<div style="margin-left:10px; font-size:11px;">
+                    A) ${q.options[0]} <br>
+                    B) ${q.options[1]} <br>
+                    C) ${q.options[2]} <br>
+                    D) ${q.options[3]}
+                  </div>`;
+                }
+                html += `<div style="margin:8px 0; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:13px; background:#fff;">
+                  <b>[${type.toUpperCase()}]</b> <div>${qText}</div>
+                  ${options}
+                  <button class="del-btn" onclick="deleteQuestion('${cls}','${sub}','${chap}','${type}',${idx})">Delete</button>
+                </div>`;
+              });
+            }
+          }
+        });
+        html += "<br>";
+      }
+    }
+  }
+  document.getElementById("bankList").innerHTML = html || "Bank khali hai";
+  // MathJax render
+  setTimeout(()=>{if(window.MathJax) MathJax.typesetPromise([document.getElementById("bankList")])}, 300);
+}
+
+function deleteQuestion(cls, sub, chap, type, idx){
+  if(confirm("Pakka delete karna hai?")){
+    const dbRef = db.ref(`questionBank/${cls}/${sub}/${chap}/${type}`);
+    dbRef.once("value").then(snapshot => {
+      let obj = snapshot.val();
+      let keys = Object.keys(obj);
+      dbRef.child(keys[idx]).remove();
+    });
+  }
+  setTimeout(()=>{loadBankList()}, 500); // thora delay taake firebase update ho jaye
+}
+
+function toggleMenu(){
+  if(selectedClass === ""){ document.getElementById("msg").innerText = "❌ Select class first"; return; }
+  if(selectedChapters.length === 0){ document.getElementById("msg").innerText = "❌ Pehle koi chapter select karo"; return; }
+  document.getElementById("menu").style.display = "block";
+}
+
+let longWizardState = {total:0, attempt:0, currentQ:1, step:'A', parts:false, pA:5, pB:5, tempData:[]};
+
+function openType(type){
+  selectedType = type;
+  document.getElementById("settings").style.display = "block";
+  document.getElementById("bank").innerHTML = "";
+  let title = {mcq: "Question 1 (MCQs)", short: "Question 2 (Short)", long: "Question 3 (Long)"};
+  document.getElementById("typeTitle").innerText = title[type];
+
+  if(type === 'short' || type === 'long'){
+    document.getElementById("choiceInputs").style.display = "block";
+  } else {
+    document.getElementById("choiceInputs").style.display = "none";
+  }
+
+  if(type === 'long'){
+    document.getElementById("partsInputs").style.display = "block";
+    // Button ka naam aur kaam change
+    document.querySelector("#settings button").innerText = "Start Wizard";
+    document.querySelector("#settings button").setAttribute("onclick", "startLongWizardUI()");
+  } else {
+    document.getElementById("partsInputs").style.display = "none";
+    document.querySelector("#settings button").innerText = "Load Questions";
+    document.querySelector("#settings button").setAttribute("onclick", "loadBank()");
+  }
+}
+
+function loadBank(){
+  let count = parseInt(document.getElementById("qCount").value);
+  let marks = parseInt(document.getElementById("qMarks").value);
+  if(!selectedType ||!count ||!marks || selectedChapters.length === 0){ alert("Sab fill karo"); return; }
+  let data = getData();
+  if(data.length === 0){ alert("Selected chapters me " + selectedType + " questions nahi"); return; }
+  let html = "";
+  data.forEach((q, i) => {
+    if(selectedType === "mcq"){
+      html += `<div style="margin-bottom:15px; padding:8px; border:1px solid #eee;">
+        <input type="checkbox" id="q_${selectedType}_${i}"> <b>${i+1}.</b> <div>${q.question}</div><br>
+        &nbsp;&nbsp;A) <div>${q.options[0]}</div>
+        &nbsp;&nbsp;B) <div>${q.options[1]}</div>
+        &nbsp;&nbsp;C) <div>${q.options[2]}</div>
+        &nbsp;&nbsp;D) <div>${q.options[3]}</div>
+      </div>`;
+    } else {
+      html += `<div style="margin-bottom:10px; padding:8px; border:1px solid #eee;">
+        <input type="checkbox" id="q_${selectedType}_${i}"> <b>${i+1}.</b> <div>${q}</div>
+      </div>`;
+    }
+  });
+  document.getElementById("bank").innerHTML = html;
+  // MathJax render - Tiiny ke liye 500ms delay
+  setTimeout(()=>{if(window.MathJax) MathJax.typesetPromise([document.getElementById("bank")])}, 500);
+}
+
+function getData(){
+  if(!selectedClass ||!selectedSubject ||!selectedType || selectedChapters.length === 0) return [];
+  let allQuestions = [];
+  selectedChapters.forEach(chap => {
+    let questionsObj = questionBank[selectedClass]?.[selectedSubject]?.[chap]?.[selectedType];
+    if(questionsObj) {
+      allQuestions = allQuestions.concat(Object.values(questionsObj));
+    }
+  });
+  return allQuestions;
+}
+
+function addSelected(){
+  let count = parseInt(document.getElementById("qCount").value) || 0;
+  let marks = parseInt(document.getElementById("qMarks").value) || 0;
+  let attempt = parseInt(document.getElementById("qAttempt").value) || count;
+  let hasParts = document.getElementById("hasParts")?.checked || false;
+  let partAMarks = parseInt(document.getElementById("partAMarks")?.value) || 0;
+  let partBMarks = parseInt(document.getElementById("partBMarks")?.value) || 0;
+
+  let data = getData();
+  let selected = [];
+
+  data.forEach((q, i) => {
+    let box = document.getElementById("q_"+selectedType+"_"+i);
+    if(box && box.checked){
+      let qObj = {
+        question: selectedType === "mcq"? q.question : q,
+        options: selectedType === "mcq"? q.options : [],
+        marks: marks
+      };
+
+      // NAYA: Agar Long hai to har question ko 2 parts me break kar do
+      if(selectedType === 'long'){
+        qObj.hasParts = true;
+        // agar user ne marks nahi diye to 50/50 kar do
+        qObj.partAMarks = partAMarks > 0? partAMarks : Math.floor(marks/2);
+        qObj.partBMarks = partBMarks > 0? partBMarks : Math.ceil(marks/2);
+        qObj.marks = qObj.partAMarks + qObj.partBMarks;
+      }
+
+      selected.push(qObj);
+    }
+  });
+
+  if(selected.length === 0){ alert("Select at least one"); return; }
+  if(selected.length > count){ alert("Limit exceeded! Max " + count); return; }
+
+  paper[selectedType].push({
+    questions: selected,
+    totalGiven: count,
+    toAttempt: attempt,
+    marksPerQ: marks,
+    hasParts: hasParts,
+    partAMarks: partAMarks,
+    partBMarks: partBMarks
+  });
+
+  renderPaper();
+  resetUI();
+}
+
+
+
+function resetUI(){
+  selectedType = "";
+  document.getElementById("settings").style.display = "none";
+  document.getElementById("bank").innerHTML = "";
+  document.getElementById("menu").style.display = "none";
+}
+
+function renderPaper() {
+  const paperDiv = document.getElementById('output');
+  paperDiv.innerHTML = '';
+
+  if(!document.getElementById('printFixCSS')){
+    let styleTag = document.createElement('style');
+    styleTag.id = 'printFixCSS';
+    styleTag.innerHTML = `
+    @media print {
+      body { margin: 0; padding: 0; }
+      #output { padding: 8px 4px 2px 4px!important; font-size: 10px!important; width: 100%!important; }
+      #output img {max-width: 90%!important; height: auto!important; page-break-inside: avoid;}
+   .section-title { font-weight:700; font-size:11px; text-decoration:underline; margin-top:8px; margin-bottom:3px; }
+   .col-2 { column-count: 2; column-gap: 12px; }
+   .col-item { break-inside: avoid; page-break-inside: avoid; }
+   .q-wrap { padding-left: 18px; position: relative; }
+   .q-num { position: absolute; left: 0; top: 0; }
+   .q-part { padding-left: 18px; }
+    }
+    #output img {max-width: 100%; border-radius: 5px; margin: 5px 0;}
+    `;
+    document.head.appendChild(styleTag);
+  }
+
+  if(!selectedClass ||!selectedSubject) {
+    paperDiv.innerHTML = `<div style="text-align:center; padding:20px; color:#666;">Pehly Class or Subject select karo</div>`;
+    return;
+  }
+
+  let grandTotal = 0;
+  let qNo = 1;
+  paperDiv.style.fontSize = '10px';
+  paperDiv.style.lineHeight = '1.3';
+  paperDiv.style.padding = '2px 4px';
+  paperDiv.style.fontFamily = 'Arial, sans-serif';
+  paperDiv.style.width = '100%';
+  let result = '';
+
+  document.getElementById('headerClass').innerText = selectedClass;
+  document.getElementById('headerSubject').innerText = selectedSubject;
+
+  // ================= SECTION 1: MCQ =================
+  if(paper.mcq.length){
+    let mcqMarks = paper.mcq[0].marksPerQ || 1;
+    let totalQ = 0;
+    paper.mcq.forEach(g=> totalQ += g.questions.length);
+    let mcqTotal = totalQ * mcqMarks;
+    grandTotal += mcqTotal;
+
+    result += `<div class="section-title">SECTION 1: OBJECTIVE</div>`;
+    result += `<div class="question-title" style="display:flex; justify-content:space-between; font-weight:bold; font-size:11px; margin:6px 0 3px 0;">`;
+    result += `<span>Q${qNo++}. Choose the correct option:</span>`;
+    result += `<span>(${totalQ} x ${mcqMarks} = ${mcqTotal})</span>`;
+    result += `</div>`;
+
+    let counter = 1;
+    paper.mcq.forEach(group=>{
+      group.questions.forEach(q=>{
+        result += `<div style="margin-bottom:8px;">`;
+        result += `<div class="q-wrap"><span class="q-num"><b>${counter++}.</b></span> <div>${q.question}</div></div>`;
+        result += `<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:4px; margin-left:12px; margin-top:2px; font-size:9.5px;">`;
+        result += `<div>(A) ${q.options[0]}</div>`;
+        result += `<div>(B) ${q.options[1]}</div>`;
+        result += `<div>(C) ${q.options[2]}</div>`;
+        result += `<div>(D) ${q.options[3]}</div>`;
+        result += `</div>`;
+        result += `</div>`;
+      });
+    });
+  }
+
+  // ================= SECTION 2: SHORT =================
+  if(paper.short.length){
+    result += `<div class="section-title">SECTION 2: SHORT QUESTIONS</div>`;
+    paper.short.forEach((group)=>{
+      let questions = group.questions;
+      let totalGiven = group.totalGiven;
+      let toAttempt = group.toAttempt;
+      let marks = group.marksPerQ;
+      grandTotal += toAttempt * marks;
+      let title = `Write short answers of the following questions.`;
+      if(totalGiven > toAttempt){
+        title = `Write short answers of any <b>${toAttempt}</b> out of <b>${totalGiven}</b> given questions.`;
+      }
+      result += `<div class="question-title" style="display:flex; justify-content:space-between; font-weight:bold; font-size:11px; margin:6px 0 3px 0;">`;
+      result += `<span>Q${qNo++}. ${title}</span>`;
+      result += `<span>(${toAttempt} x ${marks} = ${toAttempt * marks})</span>`;
+      result += `</div>`;
+      result += `<div class="col-2" style="margin-top:2px;">`;
+      questions.forEach((q,i)=>{
+        result += `<div class="q-wrap col-item" style="margin-bottom:4px;"><span class="q-num"><b>${i+1}.</b></span> <div>${q.question}</div></div>`;
+      });
+      result += `</div>`;
+    });
+  }
+
+  // ================= SECTION 3: LONG =================
+  if(paper.long.length){
+    result += `<div class="section-title">SECTION 3: DETAILED QUESTIONS</div>`;
+    paper.long.forEach((group)=>{
+      let questions = group.questions;
+      let totalGiven = group.totalGiven;
+      let toAttempt = group.toAttempt;
+      let marks = group.marksPerQ;
+      grandTotal += toAttempt * marks;
+      let title = `Write detailed answers of the following questions.`;
+      if(totalGiven > toAttempt){
+        title = `Write detailed answers of any <b>${toAttempt}</b> out of <b>${totalGiven}</b> given questions.`;
+      }
+      result += `<div class="question-title" style="display:flex; justify-content:space-between; font-weight:bold; font-size:11px; margin:6px 0 3px 0;">`;
+      result += `<span>Q${qNo++}. ${title}</span>`;
+      result += `<span>(${toAttempt} x ${marks} = ${toAttempt * marks})</span>`;
+      result += `</div>`;
+      result += `<div class="col-2" style="margin-top:2px;">`;
+      questions.forEach((q,i)=>{
+        if(q.hasParts){
+          result += `<div class="col-item" style="margin-bottom:4px;">`;
+          result += `<div class="q-wrap"><span class="q-num"><b>${i+1}.</b></span> a) <div>${q.question}</div> [${q.partAMarks}]</div>`;
+          result += `<div class="q-part">b) <div>${q.partB}</div> [${q.partBMarks}]</div>`;
+          result += `</div>`;
+        } else {
+          result += `<div class="q-wrap col-item" style="margin-bottom:4px;"><span class="q-num"><b>${i+1}.</b></span> <div>${q.question}</div></div>`;
+        }
+      });
+      result += `</div>`;
+    });
+  }
+
+  paperDiv.innerHTML = result;
+  document.getElementById('headerTotal').textContent = grandTotal;
+  // MathJax render - Tiiny ke liye 500ms delay
+  setTimeout(()=>{if(window.MathJax) MathJax.typesetPromise([paperDiv])}, 500);
+}
+function finishPaper(){
+  document.getElementById("controlPanel").style.display = "none";
+  document.getElementById("addQuestionPanel").style.display = "none";
+  document.getElementById("bankControls").style.display = "none";
+  document.getElementById("addFinishDiv").style.display = "none";
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("settings").style.display = "none";
+  document.getElementById("buttonRow").style.display = "none";
+  document.getElementById("msg").innerText = "";
+  document.getElementById("newPaperBtn").style.display = "block";
+  
+  // Screen se bhi saari <hr> lines gayab karo
+  document.querySelectorAll("hr").forEach(hr => hr.style.display = "none");
+}
+
+function newPaper(){
+  paper = { mcq: [], short: [], long: [] };
+  document.getElementById("output").innerHTML = "";
+  document.getElementById("controlPanel").style.display = "flex";
+  document.getElementById("addFinishDiv").style.display = "flex";
+  document.getElementById("buttonRow").style.display = "flex";
+  document.getElementById("newPaperBtn").style.display = "none";
+  document.getElementById("classSelect").value = "";
+  document.getElementById("subjectSelect").innerHTML = `<option value="">-- Select Subject --</option>`;
+  document.getElementById("chapterSection").style.display = "none";
+  selectedClass = "";
+  selectedSubject = "";
+  selectedChapters = [];
+  
+  document.getElementById("headerClass").innerText = "____________________";
+  document.getElementById("headerSubject").innerText = "____________________";
+  document.getElementById("headerTotal").innerText = "____________________";
+  
+  // <hr> lines wapis dikhao
+  document.querySelectorAll("hr").forEach(hr => hr.style.display = "block");
+}
+
+
+function startLongWizardUI(){
+  longWizardState.total = parseInt(document.getElementById("qCount").value) || 0;
+  longWizardState.attempt = parseInt(document.getElementById("qAttempt").value) || longWizardState.total;
+  longWizardState.parts = document.getElementById("hasParts").checked;
+  longWizardState.pA = parseInt(document.getElementById("partAMarks").value) || 5;
+  longWizardState.pB = parseInt(document.getElementById("partBMarks").value) || 5;
+  longWizardState.currentQ = 1;
+  longWizardState.step = 'A';
+  longWizardState.tempData = [];
+
+  if(longWizardState.total === 0){ alert("Number of Questions bharo"); return; }
+  showWizardStep();
+}
+
+function showWizardStep(){
+  let data = getData();
+  if(data.length === 0){ alert("Bank me questions nahi"); return; }
+
+  let label = `Question ${longWizardState.currentQ} ka Part ${longWizardState.step} select karo`;
+  if(!longWizardState.parts) label = `Question ${longWizardState.currentQ} select karo`;
+
+  let html = `<h3 style="color:darkblue; text-align:center;">${label}</h3>`;
+  data.forEach((q, i) => {
+    let qText = typeof q === 'string'? q : q.question;
+    html += `<div style="margin-bottom:10px; padding:10px; border:2px solid #2563eb; border-radius:8px; cursor:pointer; background:#f0f8ff;" onclick="selectWizardQ(${i})">
+      <b>${i+1}.</b> ${qText}
+    </div>`;
+  });
+  html += `<button onclick="cancelWizard()" style="background:red; color:white; padding:10px; border:none; border-radius:6px; margin-top:10px; width:100%;">Cancel</button>`;
+
+  document.getElementById("bank").innerHTML = html;
+  document.getElementById("settings").style.display = "none";
+}
+
+function selectWizardQ(index){
+  let data = getData();
+  let q = data[index];
+  let qText = typeof q === 'string'? q : q.question;
+
+  if(longWizardState.parts){
+    if(longWizardState.step === 'A'){
+      longWizardState.tempData.push({question: qText, partAMarks: longWizardState.pA});
+      longWizardState.step = 'B';
+    } else {
+      let lastQ = longWizardState.tempData[longWizardState.tempData.length - 1];
+      lastQ.partB = qText;
+      lastQ.partBMarks = longWizardState.pB;
+      lastQ.hasParts = true;
+      lastQ.marks = longWizardState.pA + longWizardState.pB;
+      longWizardState.currentQ++;
+      longWizardState.step = 'A';
+    }
+  } else {
+    longWizardState.tempData.push({question: qText, marks: parseInt(document.getElementById("qMarks").value), hasParts: false});
+    longWizardState.currentQ++;
+  }
+
+  if(longWizardState.currentQ > longWizardState.total){
+    paper.long.push({
+      questions: longWizardState.tempData,
+      totalGiven: longWizardState.total,
+      toAttempt: longWizardState.attempt,
+      marksPerQ: longWizardState.pA + longWizardState.pB
+    });
+    renderPaper();
+    resetUI();
+    alert("All " + longWizardState.total + " Long Questions Added!");
+  } else {
+    showWizardStep();
+  }
+}
+
+function cancelWizard(){
+  resetUI();
+}
+
+// IMAGE UPLOAD KARNE WALA
+// IMAGE UPLOAD KARNE WALA - CLOUDINARY
+async function uploadImage(file){
+  const CLOUD_NAME = "hvva7kd3"; 
+  const UPLOAD_PRESET = "Paper_app"; 
+  
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+  
+  // Compress 800px tak
+  const base64Data = await new Promise(res=>{
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxW = 800;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      res(canvas.toDataURL('image/jpeg', 0.7));
+    }
+    img.src = URL.createObjectURL(file);
+  });
+
+  const formData = new FormData();
+  formData.append("file", base64Data);
+  formData.append("upload_preset", UPLOAD_PRESET);
+
+  const res = await fetch(url, { method: "POST", body: formData });
+  const data = await res.json();
+  
+  if(data.secure_url){
+      return data.secure_url; 
+  } else {
+      throw new Error("Upload failed: " + data.error.message);
+  }
+}
+
+// JAB PASTE KARO TO AUTO UPLOAD HO JAYE
+document.getElementById('addQuestionText').addEventListener('paste', async (e)=>{
+  const items = e.clipboardData.items;
+  for(let item of items){
+    if(item.type.indexOf('image')!== -1){
+      e.preventDefault();
+      const file = item.getAsFile();
+      const url = await uploadImage(file);
+      document.execCommand('insertImage', false, url);
+    }
+  }
+});
+</script>
+</body>
+</html>
